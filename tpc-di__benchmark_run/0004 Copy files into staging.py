@@ -19,6 +19,28 @@ files_directory = files_directory + 'Batch1/'
 
 # COMMAND ----------
 
+##  TODO: we went with underscore case in code, but the spec is written in camelCase.  We should refactor to get compliance with the spec.  need to change this and step 0003 Initialzation 
+
+
+# COMMAND ----------
+
+spark.sql(f"""
+
+COPY INTO {staging_database}.batch_date (
+
+FROM (
+  select _c0::TIMESTAMP batchdate
+  FROM '{files_directory}'
+)
+FILEFORMAT = CSV
+PATTERN = 'BatchDate.csv'
+FORMAT_OPTIONS('sep' = ',')
+
+""")
+
+
+# COMMAND ----------
+
 spark.sql(f"""
 
 COPY INTO {warehouse_database}.dim_date

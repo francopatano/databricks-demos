@@ -4,6 +4,11 @@
 
 # COMMAND ----------
 
+## Cluster MUST have SparkXML package from Maven.  Recommend com.databricks:spark-xml_2.12:0.14.0
+
+
+# COMMAND ----------
+
 datagen_location = '' # where the datagen tools zip is located.  Look at the prep notebook if you need this
 files_directory = '' # tells 001 generate data where to put the files 
 staging_database = '' # name of the database for the staging tables in the metastore

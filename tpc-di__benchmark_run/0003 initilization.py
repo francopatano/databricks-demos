@@ -286,7 +286,7 @@ USING DELTA COMMENT 'watch history incremental  table';
 # MAGIC %sql 
 # MAGIC drop table if exists {staging_database}.customermgmt_raw; 
 # MAGIC 
-# MAGIC create table elh10bronze.customermgmt_raw
+# MAGIC create table {staging_database}.customermgmt_raw
 # MAGIC (`Customer` STRUCT<`Account`: STRUCT<`CA_B_ID`: BIGINT, `CA_NAME`: STRING, `_CA_ID`: BIGINT, `_CA_TAX_ST`: BIGINT, `_VALUE`: STRING>, `Address`: STRUCT<`C_ADLINE1`: STRING, `C_ADLINE2`: STRING, `C_CITY`: STRING, `C_CTRY`: STRING, `C_STATE_PROV`: STRING, `C_ZIPCODE`: STRING>, `ContactInfo`: STRUCT<`C_ALT_EMAIL`: STRING, `C_PHONE_1`: STRUCT<`C_AREA_CODE`: BIGINT, `C_CTRY_CODE`: BIGINT, `C_EXT`: BIGINT, `C_LOCAL`: STRING>, `C_PHONE_2`: STRUCT<`C_AREA_CODE`: BIGINT, `C_CTRY_CODE`: BIGINT, `C_EXT`: BIGINT, `C_LOCAL`: STRING>, `C_PHONE_3`: STRUCT<`C_AREA_CODE`: BIGINT, `C_CTRY_CODE`: BIGINT, `C_EXT`: BIGINT, `C_LOCAL`: STRING>, `C_PRIM_EMAIL`: STRING>, `Name`: STRUCT<`C_F_NAME`: STRING, `C_L_NAME`: STRING, `C_M_NAME`: STRING>, `TaxInfo`: STRUCT<`C_LCL_TX_ID`: STRING, `C_NAT_TX_ID`: STRING>, `_C_DOB`: DATE, `_C_GNDR`: STRING, `_C_ID`: BIGINT, `_C_TAX_ID`: STRING, `_C_TIER`: BIGINT, `_VALUE`: STRING>,`_ActionTS` TIMESTAMP,`_ActionType` STRING)
 # MAGIC using com.databricks.spark.xml
 # MAGIC OPTIONS (path "dbfs:/tmp/tpc-di/3/Batch1/CustomerMgmt.xml", rowTag "TPCDI:Action")
@@ -460,6 +460,334 @@ CREATE OR REPLACE TABLE  {warehouse_database}.di_messages
 USING DELTA COMMENT 'DI messages table';
 
 """)
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {warehouse_database}.dim_account
+(
+    sk_accountid BIGINT GENERATED ALWAYS AS IDENTITY COMMENT 'Surrogate key for AccountID',
+    accountid BIGINT COMMENT 'Customer account identifier',
+    sk_brokerid BIGINT COMMENT 'Surrogate key of managing broker',
+    sk_customerid BIGINT COMMENT 'Surrogate key of customer',
+    status STRING COMMENT 'Account status, active or closed',
+    accountdesc STRING COMMENT 'Name of customer account',
+    taxstatus INT COMMENT 'Tax status of this account',
+    iscurrent BOOLEAN COMMENT 'True if this is the current record',
+    batchid INT COMMENT 'Batch ID when this record was inserted',
+    effectivedate TIMESTAMP COMMENT 'Beginning of date range when this record was the current record',
+    enddate TIMESTAMP COMMENT 'Ending of date range when this record was the current record. A record that is not expired will use the date 9999-12-31.'
+)
+USING DELTA COMMENT 'account dimension table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {warehouse_database}.dim_broker
+(
+sk_brokerid BIGINT GENERATED ALWAYS AS IDENTITY COMMENT 'Surrogate key for broker',
+brokerid BIGINT COMMENT 'Natural key for broker',
+managerid BIGINT COMMENT 'Natural key for manager’s HR record',
+firstname STRING COMMENT 'First name',
+lastname STRING COMMENT 'Last Name',
+middleinitial STRING COMMENT 'Middle initial',
+branch STRING COMMENT 'Facility in which employee has office',
+office STRING COMMENT 'Office number or description',
+phone STRING COMMENT 'Employee phone number',
+iscurrent BOOLEAN COMMENT 'True if this is the current record',
+batchid INT COMMENT 'Batch ID when this record was inserted',
+effectivedate STRING COMMENT 'Beginning of date range when this record was the current record',
+enddate TIMESTAMP COMMENT 'Ending of date range when this record was the current record. A record that is not expired will use the date 9999-12-31.'
+)
+USING DELTA COMMENT 'broker dimension table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {warehouse_database}.dim_company
+(
+sk_companyid BIGINT GENERATED ALWAYS AS IDENTITY COMMENT 'Surrogate key for CompanyID',
+companyid BIGINT COMMENT 'Company identifier (CIK number)',
+status STRING COMMENT 'Company status',
+name STRING COMMENT 'Company name',
+industry STRING COMMENT 'Company’s industry',
+sprating STRING COMMENT 'Standard & Poor company’s rating',
+islowgrade BOOLEAN COMMENT 'True if this company is low grade',
+ceo STRING COMMENT 'CEO name',
+addressline1 STRING COMMENT 'Address Line 1',
+addressline2 STRING COMMENT 'Address Line 2',
+postalcode STRING COMMENT 'Zip or postal code',
+city STRING COMMENT 'City',
+stateprov STRING COMMENT 'State or Province',
+country STRING COMMENT 'Country',
+description STRING COMMENT 'Company description',
+foundingdate STRING COMMENT 'Date the company was founded',
+iscurrent BOOLEAN COMMENT 'True if this is the current record',
+batchid INT COMMENT 'Batch ID when this record was inserted',
+effectivedate TIMESTAMP COMMENT 'Beginning of date range when this record was the current record',
+enddate TIMESTAMP COMMENT 'Ending of date range when this record was the current record. A record that is not expired will use the date 9999-12-31.'
+)
+USING DELTA COMMENT 'company dimension table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {warehouse_database}.dim_customer
+(
+sk_customerid BIGINT GENERATED ALWAYS AS IDENTITY COMMENT 'Surrogate key for CustomerID',
+customerid BIGINT COMMENT 'Customer identifier',
+taxid STRING COMMENT 'Customer’s tax identifier',
+status STRING COMMENT 'Customer status type',
+lastname STRING COMMENT 'Customer's last name.',
+firstname STRING COMMENT 'Customer's first name.',
+middleinitial STRING COMMENT 'Customer's middle name initial',
+gender STRING COMMENT 'Gender of the customer',
+tier INT COMMENT 'Customer tier',
+dob TIMESTAMP COMMENT 'Customer’s date of birth.',
+addressline1 STRING COMMENT 'Address Line 1',
+addressline2 STRING COMMENT 'Address Line 2',
+postalcode STRING COMMENT 'Zip or Postal Code',
+city STRING COMMENT 'City',
+stateprov STRING COMMENT 'State or Province',
+country STRING COMMENT 'Country',
+phone1 STRING COMMENT 'Phone number 1',
+phone2 STRING COMMENT 'Phone number 2',
+phone3 STRING COMMENT 'Phone number 3',
+email1 STRING COMMENT 'Email address 1',
+email2 STRING COMMENT 'Email address 2',
+nationaltaxratedesc STRING COMMENT 'National Tax rate description',
+nationaltaxrate DOUBLE COMMENT 'National Tax rate',
+localtaxratedesc STRING COMMENT 'Local Tax rate description',
+localtaxrate DOUBLE COMMENT 'Local Tax rate',
+agencyid STRING COMMENT 'Agency identifier',
+creditrating INT COMMENT 'Credit rating',
+networth DOUBLE COMMENT 'Net worth',
+marketingnameplate STRING COMMENT 'Marketing nameplate',
+iscurrent BOOLEAN COMMENT 'True if this is the current record',
+batchid INT COMMENT 'Batch ID when this record was inserted',
+effectivedate TIMESTAMP COMMENT 'Beginning of date range when this record was the current record',
+enddate TIMESTAMP COMMENT 'Ending of date range when this record was the current record. A record that is not expired will use the date 9999-12-31.'
+)
+USING DELTA COMMENT 'customer dimension table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {warehouse_database}.dim_trade
+(
+tradeid BIGINT GENERATED ALWAYS AS IDENTITY COMMENT 'Trade identifier',
+sk_brokerid BIGINT COMMENT 'Surrogate key for BrokerID',
+sk_createdateid BIGINT COMMENT 'Surrogate key for date created',
+sk_createtimeid BIGINT COMMENT 'Surrogate key for time created',
+sk_closedateid BIGINT COMMENT 'Surrogate key for date closed',
+sk_closetimeid BIGINT COMMENT 'Surrogate key for time closed',
+status STRING COMMENT 'Trade status',
+type STRING COMMENT 'Trade type',
+cashflag BOOLEAN COMMENT 'Is this trade a cash (1) or margin (0) trade?',
+sk_securityid BIGINT COMMENT 'Surrogate key for SecurityID',
+sk_companyid BIGINT COMMENT 'Surrogate key for CompanyID',
+quantity INT COMMENT 'Quantity of securities traded.',
+bidprice DOUBLE COMMENT 'The requested unit price.',
+sk_customerid BIGINT COMMENT 'Surrogate key for CustomerID',
+sk_accountid BIGINT COMMENT 'Surrogate key for AccountID',
+executedby STRING COMMENT 'Name of person executing the trade.',
+tradeprice DOUBLE COMMENT 'Unit price at which the security was traded.',
+fee DOUBLE COMMENT 'Fee charged for placing this trade request',
+commission DOUBLE COMMENT 'Commission earned on this trade',
+tax DOUBLE COMMENT 'Amount of tax due on this trade',
+batchid INT COMMENT 'Batch ID when this record was inserted'
+)
+USING DELTA COMMENT 'trade dimension table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {warehouse_database}.fact_cash_balances
+(
+sk_customerid BIGINT COMMENT 'Surrogate key for CustomerID',
+sk_accountid BIGINT COMMENT 'Surrogate key for AccountID',
+sk_dateid BIGINT COMMENT 'Surrogate key for the date',
+cash DOUBLE COMMENT 'Cash balance for the account after applying',
+batchid INT COMMENT 'Batch ID when this record was inserted'
+)
+USING DELTA COMMENT 'cash balances fact table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {warehouse_database}.fact_holdings
+(
+tradeid BIGINT COMMENT 'Key for Orignial Trade Indentifier',
+currenttradeid BIGINT COMMENT 'Key for the current trade',
+sk_customerid BIGINT COMMENT 'Surrogate key for Customer Identifier',
+sk_accountid BIGINT COMMENT 'Surrogate key for Account Identifier',
+sk_securityid BIGINT COMMENT 'Surrogate key for Security Identifier',
+sk_companyid BIGINT COMMENT 'Surrogate key for Company Identifier',
+sk_dateid BIGINT COMMENT 'Surrogate key for the date associated with the',
+sk_timeid BIGINT COMMENT 'Surrogate key for the time associated with the',
+currentprice DOUBLE COMMENT 'Unit price of this security for the current trade',
+currentholding DOUBLE COMMENT 'Quantity of a security held after the current trade.',
+batchid INT COMMENT 'Batch ID when this record was inserted'
+)
+USING DELTA COMMENT 'holdings fact table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {warehouse_database}.fact_market_history
+(
+sk_securityid BIGINT COMMENT 'Surrogate key for SecurityID',
+sk_companyid BIGINT COMMENT 'Surrogate key for CompanyID',
+sk_dateid BIGINT COMMENT 'Surrogate key for the date',
+peratio DOUBLE COMMENT 'Price to earnings per share ratio',
+yield DOUBLE COMMENT 'Dividend to price ratio, as a percentage',
+fiftytwoweekhigh DOUBLE COMMENT 'Security highest price in last 52 weeks from this day',
+sk_fiftytwoweekhighdate BIGINT COMMENT 'Earliest date on which the 52 week high price was set',
+fiftytwoweeklow DOUBLE COMMENT 'Security lowest price in last 52 weeks from this day',
+sk_fiftytwoweeklowdate BIGINT COMMENT 'Earliest date on which the 52 week low price was set',
+closeprice DOUBLE COMMENT 'Security closing price on this day',
+dayhigh DOUBLE COMMENT 'Highest price for the security on this day',
+daylow DOUBLE COMMENT 'Lowest price for the security on this day',
+volume BIGINT COMMENT 'Trading volume of the security on this day',
+batchid INT COMMENT 'Batch ID when this record was inserted'
+)
+USING DELTA COMMENT 'market history fact table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {warehouse_database}.fact_watches
+(
+sk_customerid BIGINT COMMENT 'Customer associated with watch list',
+sk_securityid BIGINT COMMENT 'Security listed on watch list',
+sk_dateid_dateplaced BIGINT COMMENT 'Date the watch list item was added',
+sk_dateid_dateremoved BIGINT COMMENT 'Date the watch list item was removed',
+batchid INT COMMENT 'Batch ID when this record was inserted'
+)
+USING DELTA COMMENT 'watches fact table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {warehouse_database}.financial
+(
+sk_companyid BIGINT COMMENT 'Company SK.',
+fi_year INT COMMENT 'Year of the quarter end.',
+fi_qtr INT COMMENT 'Quarter number that the financial information is for: valid values 1, 2, 3, 4.',
+fi_qtr_start_date TIMESTAMP COMMENT 'Start date of quarter.',
+fi_revenue DOUBLE COMMENT 'Reported revenue for the quarter.',
+fi_net_earn DOUBLE COMMENT 'Net earnings reported for the quarter.',
+fi_basic_eps DOUBLE COMMENT 'Basic earnings per share for the quarter.',
+fi_dilut_eps DOUBLE COMMENT 'Diluted earnings per share for the quarter.',
+fi_margin DOUBLE COMMENT 'Profit divided by revenues for the quarter.',
+fi_inventory DOUBLE COMMENT 'Value of inventory on hand at the end of quarter.',
+fi_assets DOUBLE COMMENT 'Value of total assets at the end of the quarter.',
+fi_liability DOUBLE COMMENT 'Value of total liabilities at the end of the quarter.',
+fi_out_basic DOUBLE COMMENT 'Average number of shares outstanding (basic).',
+fi_out_dilut DOUBLE COMMENT 'Average number of shares outstanding (diluted).'
+)
+USING DELTA COMMENT 'financial table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {warehouse_database}.audit
+(
+    dataset STRING COMMENT 'Component the data is associated with',
+    batchid INT COMMENT 'BatchID the data is associated with',
+    date TIMESTAMP COMMENT 'Date value corresponding to the Attribute',
+    attribute STRING COMMENT 'Attribute this row of data corresponds to',
+    value DOUBLE COMMENT 'Integer value corresponding to the Attribute',
+    dvalue DOUBLE COMMENT 'Decimal value corresponding to the Attribute'
+)
+USING DELTA COMMENT 'audit table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {staging_database}.account
+(
+cdc_flag STRING COMMENT 'Denotes insert or update',
+cdc_dsn BIGINT COMMENT 'Database Sequence Number',
+ca_id BIGINT COMMENT 'Customer account identifier',
+ca_b_id BIGINT COMMENT 'Identifier of the managing broker',
+ca_c_id BIGINT COMMENT 'Owning customer identifier',
+ca_name STRING COMMENT 'Name of customer account',
+ca_tax_st INT COMMENT 'Tax status of this account',
+ca_st_id STRING COMMENT 'Customer status type identifier'
+)
+USING DELTA COMMENT 'account incremental table';
+
+""")
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE TABLE  {staging_database}.customer
+(
+cdc_flag STRING COMMENT 'Denotes insert or update',
+cdc_dsn BIGINT COMMENT 'Database Sequence Number',
+c_id BIGINT COMMENT 'Customer identifier',
+c_tax_id STRING COMMENT 'Customer’s tax identifier',
+c_st_id STRING COMMENT 'Customer status type identifier',
+c_l_name STRING COMMENT 'Primary Customers last name.',
+c_f_name STRING COMMENT 'Primary Customers first name.',
+c_m_name STRING COMMENT 'Primary Customers middle initial',
+c_gndr STRING COMMENT 'Gender of the primary customer',
+c_tier INT COMMENT 'Customer tier',
+c_dob TIMESTAMP COMMENT 'Customer’s date of birth, as YYYY-MM-DD.',
+c_adline1 STRING COMMENT 'Address Line 1',
+c_adline2 STRING COMMENT 'Address Line 2',
+c_zipcode STRING COMMENT 'Zip or postal code',
+c_city STRING COMMENT 'City',
+c_state_pro STRING COMMENT 'State or province',
+c_ctry STRING COMMENT 'Country',
+c_ctry_1 STRING COMMENT 'Country code for Customers phone 1.',
+c_area_1 STRING COMMENT 'Area code for customer’s phone 1.',
+c_local_1 STRING COMMENT 'Local number for customer’s phone 1.',
+c_ext_1 STRING COMMENT 'Extension number for Customer’s phone 1.',
+c_ctry_2 STRING COMMENT 'Country code for Customers phone 2.',
+c_area_2 STRING COMMENT 'Area code for Customer’s phone 2.',
+c_local_2 STRING COMMENT 'Local number for Customer’s phone 2.',
+c_ext_2 STRING COMMENT 'Extension number for Customer’s phone 2.',
+c_ctry_3 STRING COMMENT 'Country code for Customers phone 3.',
+c_area_3 STRING COMMENT 'Area code for Customer’s phone 3.',
+c_local_3 STRING COMMENT 'Local number for Customer’s phone 3.',
+c_ext_3 STRING COMMENT 'Extension number for Customer’s phone 3.',
+c_email_1 STRING COMMENT 'Customers e-mail address 1.',
+c_email_2 STRING COMMENT 'Customers e-mail address 2.',
+c_lcl_tx_id STRING COMMENT 'Customers local tax rate',
+c_nat_tx_id STRING COMMENT 'Customers national tax rate'
+)
+USING DELTA COMMENT 'customer incremental table';
+
+""")
+
+# COMMAND ----------
+
+
 
 # COMMAND ----------
 
